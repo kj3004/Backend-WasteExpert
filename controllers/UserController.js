@@ -17,6 +17,13 @@ exports.register = async (req, res, next) => {
   try {
     const { name, email, password, mobile } = req.body;
 
+    console.log("Register request received:", {
+      email,
+      passwordLength: password.length,
+      name,
+      mobile,
+    });
+
     const successRes = await UserService.registerUser(
       name,
       email,
@@ -24,17 +31,15 @@ exports.register = async (req, res, next) => {
       mobile
     );
 
-    // Log the response from the UserService.registerUser method
-    console.log("Success Response:", successRes);
+    console.log("Registration response:", successRes);
 
-    // Handle the response based on the successRes
     if (successRes.success) {
       res.status(201).json({ status: true, success: successRes.message });
     } else {
       res.status(400).json({ status: false, error: successRes.message });
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Registration error:", error);
     res.status(500).json({ status: false, error: "Internal Server Error" });
   }
 };
@@ -43,48 +48,41 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Check if user exists
-    // const userService = UserService();
+    console.log("Login request:", {
+      email,
+      passwordProvided: !!password,
+      passwordLength: password?.length,
+    });
+
     const user = await UserService.checkUser(email);
     if (!user) {
-      // Log detailed error for internal use
-      console.error("Login Error: User not found");
-
-      // Send generic error response
       return res
         .status(401)
         .json({ status: false, error: "Invalid email or password" });
     }
 
-    console.log(user);
-
-    // Check if the password is correct
+    console.log("Found user, attempting password comparison");
+    // Use the mongoose model's comparePassword method directly
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      // Log detailed error for internal use
-      console.error("Login Error: Invalid password");
+    console.log("Password match result:", isMatch);
 
-      // Send generic error response
+    if (!isMatch) {
       return res
         .status(401)
         .json({ status: false, error: "Invalid email or password" });
     }
 
-    // Generate token
-    let tokenData = { _id: user._id, email: user.email, name: user.name };
+    const tokenData = { _id: user._id, email: user.email, name: user.name };
     const token = await UserService.genarateToken(
       tokenData,
       "secretkey",
       "120h"
     );
 
-    // Send successful response
+    console.log("Login successful, token generated");
     res.status(200).json({ status: true, token: token });
   } catch (error) {
-    // Log the error details
-    console.error("Login Error:", error);
-
-    // Send internal server error response
+    console.error("Login error:", error);
     res.status(500).json({ status: false, error: "Internal Server Error" });
   }
 };

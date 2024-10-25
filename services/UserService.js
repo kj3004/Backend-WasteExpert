@@ -5,32 +5,52 @@ const bcrypt = require("bcrypt");
 class UserService {
   static async registerUser(name, email, password, mobile) {
     try {
-      // Check if user already exists
+      console.log("Registration attempt:", { email, name, mobile });
+
       const existingUser = await User.findOne({
         $or: [{ email: email }, { mobile: mobile }],
       });
+
       if (existingUser) {
+        console.log("User already exists");
         return { success: false, message: "User already exists" };
       }
 
-      // If user doesn't exist, create a new user
+      console.log("Creating new user with password length:", password.length);
       const newUser = new User({ name, email, password, mobile });
-      await newUser.save();
+
+      // Save and log the result
+      const savedUser = await newUser.save();
+      console.log(
+        "User saved. Password hash:",
+        savedUser.password.substring(0, 20) + "..."
+      );
+
       return { success: true, message: "User registered successfully" };
     } catch (error) {
+      console.error("Registration error:", error);
       throw new Error("Error while registering user");
     }
   }
 
   static async checkUser(email) {
     try {
-      // Check if user already exists
-      const existingUser = await User.findOne({ email });
-      return existingUser;
+      console.log("Checking user:", email);
+      const user = await User.findOne({ email });
+      console.log("User found:", !!user);
+      if (user) {
+        console.log(
+          "Password hash in DB:",
+          user.password.substring(0, 20) + "..."
+        );
+      }
+      return user;
     } catch (error) {
+      console.error("checkUser error:", error);
       throw error;
     }
   }
+
   static async comparePassword(user, password) {
     try {
       const isMatch = await bcrypt.compare(user, password);

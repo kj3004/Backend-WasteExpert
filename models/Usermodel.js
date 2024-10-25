@@ -64,23 +64,39 @@ const userSchema = new Schema({
   },
 });
 
-userSchema.pre("save", async function () {
+userSchema.pre("save", async function (next) {
   try {
-    var user = this;
+    if (!this.isModified("password")) {
+      console.log("Password not modified, skipping hash");
+      return next();
+    }
+
+    console.log("Pre-save: Original password:", this.password);
     const salt = await bcrypt.genSalt(10);
-    const hashpaswword = await bcrypt.hash(user.password, salt);
-    user.password = hashpaswword;
-    console.log(hashpaswword);
-  } catch (error) {}
+    console.log("Pre-save: Generated salt:", salt);
+    const hashedPassword = await bcrypt.hash(this.password, salt);
+    console.log("Pre-save: Generated hash:", hashedPassword);
+    this.password = hashedPassword;
+    next();
+  } catch (error) {
+    console.error("Pre-save error:", error);
+    next(error);
+  }
 });
 
-userSchema.methods.comparePassword = async function (userPassword) {
+// Enhanced comparePassword method
+userSchema.methods.comparePassword = async function (candidatePassword) {
   try {
-    const isMatch = await bcrypt.compare(userPassword, this.password);
+    console.log("comparePassword method called");
+    console.log("Candidate password:", candidatePassword);
+    console.log("Stored hash:", this.password);
+
+    const isMatch = await bcrypt.compare(candidatePassword, this.password);
+    console.log("Password comparison result:", isMatch);
     return isMatch;
   } catch (error) {
-    console.error("Error comparing password:", error);
-    return false;
+    console.error("comparePassword error:", error);
+    throw error;
   }
 };
 
